@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --bg:#FFF9F2; --bg2:#FFF3E6; --surface:#FFFFFF; --surface2:#FFF1E0;
@@ -215,6 +216,7 @@ main{flex:1;padding:16px 16px 100px;position:relative;z-index:1;}
         <div class="form-group"><label class="form-label">Bulan</label><input type="month" class="form-input" id="histMonth" onchange="loadHistory()"></div>
       </div>
       <div class="card" id="historyList" style="padding:8px 14px;"></div>
+      <button class="btn btn-outline btn-block" onclick="exportHistoryPDF()" style="margin-bottom:14px;">📄 Export PDF</button>
     </div>
 
     <!-- ===== CHAT ===== -->
@@ -454,12 +456,14 @@ function subscribePresensi(){
 }
 
 /* ===== RIWAYAT ===== */
+let lastHistoryData = null;
 async function loadHistory(){
   const month = document.getElementById('histMonth').value; // yyyy-mm
   const from = month+'-01';
   const toD = new Date(month+'-01'); toD.setMonth(toD.getMonth()+1); toD.setDate(0);
   const to = toD.toISOString().slice(0,10);
   const rows = await sb('absensi_tk?siswa_id=eq.'+child.id+'&tanggal=gte.'+from+'&tanggal=lte.'+to+'&select=*&order=tanggal.desc');
+  lastHistoryData = { bulan: month, rows };
   const box = document.getElementById('historyList');
   if(!rows.length){ box.innerHTML = `<div class="empty"><div class="empty-emoji">📭</div><div class="empty-title">Belum ada data</div><div class="empty-desc">Belum ada presensi di bulan ini</div></div>`; return; }
   const bulanNama=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
@@ -473,6 +477,77 @@ async function loadHistory(){
       <span class="chip ${chip}">${label}</span>
     </div>`;
   }).join('');
+}
+
+/* ============================================================
+   EXPORT PDF RIWAYAT
+============================================================ */
+function bulanIndonesia(bulanStr){
+  const nama=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const [y,m] = bulanStr.split('-');
+  return nama[parseInt(m,10)-1] + ' ' + y;
+}
+function statusLabelPdf(v){
+  return {hadir:'Hadir',terlambat:'Terlambat',izin:'Izin',sakit:'Sakit',alpa:'Alpa'}[v] || v;
+}
+function exportHistoryPDF(){
+  if(!lastHistoryData){ toast('Data belum dimuat, coba pilih bulan dulu'); return; }
+  if(typeof window.jspdf === 'undefined'){ toast('Modul PDF gagal dimuat. Cek koneksi internet.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+
+  let y = 15, textX = 15;
+  if(branding.logo_base64){
+    try{ doc.addImage(branding.logo_base64, 'PNG', 15, 10, 16, 16); textX = 35; }catch(e){}
+  }
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(40,30,60);
+  doc.text(branding.app_name || 'AbsensiTK', textX, y+2);
+  doc.setDrawColor(230,220,210); doc.line(15, 30, pageW-15, 30);
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(40,30,60);
+  doc.text('Riwayat Presensi Siswa', 15, 38);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(110,100,128);
+  doc.text('Nama: '+child.nama+'  ·  Kelas: '+(child.kelas?.nama||'-'), 15, 44);
+  doc.text('Bulan: '+bulanIndonesia(lastHistoryData.bulan), 15, 49);
+
+  let ty = 58;
+  const cols = [ {h:'Tanggal', x:15, w:35}, {h:'Masuk', x:60, w:25}, {h:'Pulang', x:95, w:25}, {h:'Status', x:130, w:40} ];
+  doc.setFillColor(255,243,230);
+  doc.rect(15, ty-4.5, pageW-30, 7, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(90,60,40);
+  cols.forEach(c=> doc.text(c.h, c.x, ty));
+  doc.setDrawColor(230,220,210); doc.line(15, ty+2.5, pageW-15, ty+2.5);
+  ty += 9;
+
+  lastHistoryData.rows.forEach(r=>{
+    if(ty>270){
+      doc.addPage(); ty = 20;
+      doc.setFillColor(255,243,230); doc.rect(15, ty-4.5, pageW-30, 7, 'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(90,60,40);
+      cols.forEach(c=> doc.text(c.h, c.x, ty));
+      doc.setDrawColor(230,220,210); doc.line(15, ty+2.5, pageW-15, ty+2.5);
+      ty += 9;
+    }
+    const tgl = new Date(r.tanggal+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(60,50,75);
+    doc.text(tgl, cols[0].x, ty);
+    doc.text(fmtTime(r.jam_masuk), cols[1].x, ty);
+    doc.text(fmtTime(r.jam_pulang), cols[2].x, ty);
+    doc.text(statusLabelPdf(r.status), cols[3].x, ty);
+    ty += 6;
+  });
+
+  const pageCount = doc.internal.getNumberOfPages();
+  for(let i=1;i<=pageCount;i++){
+    doc.setPage(i);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(160,150,170);
+    doc.text('Dicetak: '+new Date().toLocaleString('id-ID'), 15, pageH-10);
+    doc.text('Developed by D.D Candra © 2026', pageW-15, pageH-10, {align:'right'});
+    doc.text('Halaman '+i+' / '+pageCount, pageW/2, pageH-10, {align:'center'});
+  }
+  doc.save('riwayat-'+child.nama.replace(/\s+/g,'_')+'-'+lastHistoryData.bulan+'.pdf');
 }
 
 /* ===== CHAT (percakapan pribadi dengan wali kelas anak) ===== */
