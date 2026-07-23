@@ -283,6 +283,7 @@ let branding = JSON.parse(localStorage.getItem('tkBranding') || '{}');
 let sbClient = null;
 let child = JSON.parse(localStorage.getItem('tkOrtuChild') || 'null'); // remembered device
 let chatChannel = null;
+let presensiChannel = null;
 
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
 function initSupabase(){
@@ -333,6 +334,7 @@ function confirmLogout(){
 function logout(){
   localStorage.removeItem('tkOrtuChild'); child=null;
   if(chatChannel && sbClient) sbClient.removeChannel(chatChannel);
+  if(presensiChannel && sbClient) sbClient.removeChannel(presensiChannel);
   document.getElementById('app').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
 }
@@ -353,6 +355,7 @@ async function enterApp(){
   await loadHistory();
   await loadChatMessages();
   subscribeChat();
+  subscribePresensi();
   await loadBroadcasts();
 }
 async function loadBrandingFromDb(){
@@ -429,6 +432,16 @@ async function loadToday(){
       <div class="time-box"><div class="time-box-label">CHECK-IN</div><div class="time-box-val">${fmtTime(r?.jam_masuk)}</div></div>
       <div class="time-box"><div class="time-box-label">CHECK-OUT</div><div class="time-box-val">${fmtTime(r?.jam_pulang)}</div></div>
     </div>`;
+}
+function subscribePresensi(){
+  if(!sbClient || !child) return;
+  if(presensiChannel) sbClient.removeChannel(presensiChannel);
+  presensiChannel = sbClient.channel('presensi-ortu-'+child.id)
+    .on('postgres_changes', {event:'*', schema:'public', table:'absensi_tk', filter:'siswa_id=eq.'+child.id}, payload=>{
+      loadToday();
+      // Refresh riwayat juga kalau layar Riwayat sedang dibuka & bulan yang berubah cocok
+      if(document.getElementById('screenHistory')?.classList.contains('active')) loadHistory();
+    }).subscribe();
 }
 
 /* ===== RIWAYAT ===== */
