@@ -7,6 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title id="pageTitle">AbsensiTK — Orang Tua</title>
+<link rel="manifest" href="manifest-ortu.json">
+<link rel="apple-touch-icon" href="icon-ortu-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -136,6 +138,8 @@ main{flex:1;padding:16px 16px 100px;position:relative;z-index:1;}
 .nav-badge-center{width:56px;height:56px;border-radius:50%;background:var(--mint);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(29,158,117,0.4);border:3px solid var(--bg);transition:transform .15s ease;}
 .nav-badge-center svg{width:26px;height:26px;fill:none;stroke:#fff;stroke-width:2.3;}
 .nav-item-center.active .nav-badge-center{transform:scale(1.05);}
+.nav-badge,.nav-badge-center{position:relative;}
+.nav-dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:var(--red);border:2px solid var(--bg);}
 .nav-item-center span{font-weight:800;color:#1F9C90;opacity:1;}
 .btn-link-subtle{font-size:11.5px;color:var(--muted);font-weight:600;text-decoration:underline;text-underline-offset:2px;}
 .hdr-logo img,.login-logo img{width:100%;height:100%;object-fit:cover;border-radius:inherit;}
@@ -293,6 +297,7 @@ let branding = JSON.parse(localStorage.getItem('tkBranding') || '{}');
 let sbClient = null;
 let child = JSON.parse(localStorage.getItem('tkOrtuChild') || 'null'); // remembered device
 let chatChannel = null;
+let broadcastChannel = null;
 let presensiChannel = null;
 
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
@@ -345,6 +350,7 @@ function logout(){
   localStorage.removeItem('tkOrtuChild'); child=null;
   if(chatChannel && sbClient) sbClient.removeChannel(chatChannel);
   if(presensiChannel && sbClient) sbClient.removeChannel(presensiChannel);
+  if(broadcastChannel && sbClient) sbClient.removeChannel(broadcastChannel);
   document.getElementById('app').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
 }
@@ -367,6 +373,7 @@ async function enterApp(){
   subscribeChat();
   subscribePresensi();
   await loadBroadcasts();
+  subscribeBroadcastOrtu();
 }
 async function loadBrandingFromDb(){
   try{
@@ -424,7 +431,8 @@ function switchScreen(name){
   document.getElementById('screen'+name).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.screen===name));
   document.querySelectorAll('.icon-btn-hdr[data-screen]').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
-  if(name==='Chat') scrollChatBottom();
+  if(name==='Chat'){ scrollChatBottom(); setNavDot('Chat', false); }
+  if(name==='Broadcast') setNavDot('Broadcast', false);
 }
 
 /* ===== BERANDA ===== */
@@ -581,9 +589,60 @@ function subscribeChat(){
   chatChannel = sbClient.channel('pesan-ortu-'+child.id)
     .on('postgres_changes', {event:'INSERT', schema:'public', table:'pesan'}, payload=>{
       const row = payload.new;
-      if(row.kelas_id===null || String(row.kelas_id)===String(child.kelas_id)) loadChatMessages();
+      if(row.kelas_id===null || String(row.kelas_id)===String(child.kelas_id)){
+        loadChatMessages();
+        if(row.pengirim_tipe!=='ortu'){
+          playNotifSound();
+          if(!document.getElementById('screenChat')?.classList.contains('active')) setNavDot('Chat', true);
+        }
+      }
     }).subscribe();
 }
+function subscribeBroadcastOrtu(){
+  if(!sbClient) return;
+  if(broadcastChannel) sbClient.removeChannel(broadcastChannel);
+  broadcastChannel = sbClient.channel('broadcast-ortu-'+child.id)
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'broadcast'}, payload=>{
+      loadBroadcasts();
+      playNotifSound();
+      if(!document.getElementById('screenBroadcast')?.classList.contains('active')) setNavDot('Broadcast', true);
+    }).subscribe();
+}
+function setNavDot(screenName, show){
+  const item = document.querySelector('.nav-item[data-screen="'+screenName+'"] .nav-badge, .nav-item[data-screen="'+screenName+'"] .nav-badge-center');
+  if(!item) return;
+  let dot = item.querySelector('.nav-dot');
+  if(show){
+    if(!dot){ dot = document.createElement('span'); dot.className='nav-dot'; item.appendChild(dot); }
+  } else if(dot){ dot.remove(); }
+}
+let notifAudioCtx = null;
+function playNotifSound(){
+  try{
+    if(!notifAudioCtx) notifAudioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if(notifAudioCtx.state==='suspended') notifAudioCtx.resume();
+    const now = notifAudioCtx.currentTime;
+    [880, 1175].forEach((freq,i)=>{
+      const osc = notifAudioCtx.createOscillator();
+      const gain = notifAudioCtx.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      const t0 = now + i*0.11;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.18, t0+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0+0.22);
+      osc.connect(gain); gain.connect(notifAudioCtx.destination);
+      osc.start(t0); osc.stop(t0+0.24);
+    });
+  }catch(e){ /* Audio tidak didukung / diblokir browser, abaikan diam-diam */ }
+}
+document.addEventListener('click', function unlockAudioOnce(){
+  try{
+    if(!notifAudioCtx) notifAudioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if(notifAudioCtx.state==='suspended') notifAudioCtx.resume();
+  }catch(e){}
+  document.removeEventListener('click', unlockAudioOnce);
+}, {once:true});
+
 let pendingPhoto = null;
 function handleChatPhoto(ev){
   const file = ev.target.files[0]; if(!file) return;
@@ -633,6 +692,11 @@ async function sendChatMessage(){
     document.getElementById('connectPromptBox').classList.remove('hidden');
   }
 })();
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw-ortu.js').catch(()=>{ /* offline saat install pertama, abaikan */ });
+  });
+}
 </script>
 </body>
 </html>
