@@ -1,0 +1,17 @@
+{
+  "name": "AbsensiTK - Orang Tua",
+  "short_name": "AbsensiTK Ortu",
+  "description": "Portal Orang Tua - Pantau presensi & chat dengan wali kelas",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF9F2",
+  "theme_color": "#29B6A8",
+  "icons": [
+    { "src": "icon-ortu-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-ortu-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-ortu-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-ortu-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
