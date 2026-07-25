@@ -139,7 +139,8 @@ main{flex:1;padding:16px 16px 100px;position:relative;z-index:1;}
 .nav-badge-center svg{width:26px;height:26px;fill:none;stroke:#fff;stroke-width:2.3;}
 .nav-item-center.active .nav-badge-center{transform:scale(1.05);}
 .nav-badge,.nav-badge-center{position:relative;}
-.nav-dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:var(--red);border:2px solid var(--bg);}
+.nav-dot{position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;background:#FF3B30;border:2.5px solid var(--bg);box-shadow:0 0 0 2px rgba(255,59,48,0.3);animation:notifPulse 1.6s ease infinite;}
+@keyframes notifPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.18);}}
 .nav-item-center span{font-weight:800;color:#1F9C90;opacity:1;}
 .btn-link-subtle{font-size:11.5px;color:var(--muted);font-weight:600;text-decoration:underline;text-underline-offset:2px;}
 .hdr-logo img,.login-logo img{width:100%;height:100%;object-fit:cover;border-radius:inherit;}
@@ -252,7 +253,11 @@ main{flex:1;padding:16px 16px 100px;position:relative;z-index:1;}
       <div class="section-title">Profil 👤</div>
       <div class="card">
         <div class="child-pick">
-          <div class="child-avatar">🧒</div>
+          <label for="childPhotoInput" style="cursor:pointer;position:relative;flex-shrink:0;">
+            <div class="child-avatar" id="profChildAvatar" style="width:52px;height:52px;font-size:22px;overflow:hidden;">🧒</div>
+            <div style="position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;border-radius:50%;background:var(--coral);display:flex;align-items:center;justify-content:center;border:2px solid var(--surface);font-size:10px;">📷</div>
+          </label>
+          <input type="file" id="childPhotoInput" accept="image/*" class="hidden" onchange="handleChildPhotoUpload(event)">
           <div><div style="font-weight:700;" id="profChildName">—</div><div class="text-muted" id="profChildKelas">—</div></div>
         </div>
         <div class="form-group"><label class="form-label">Nama Orang Tua</label><div id="profOrtuName" class="text-muted">—</div></div>
@@ -343,6 +348,32 @@ async function loginWithToken(){
     document.getElementById('connectPromptBox').classList.remove('hidden');
   }
 }
+function handleChildPhotoUpload(ev){
+  const file = ev.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const img = new Image();
+    img.onload = async ()=>{
+      const canvas = document.createElement('canvas');
+      const size = 240;
+      const scale = Math.max(size/img.width, size/img.height);
+      const w = img.width*scale, h = img.height*scale;
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, (size-w)/2, (size-h)/2, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      document.getElementById('profChildAvatar').innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+      try{
+        await sb('siswa?id=eq.'+child.id, {method:'PATCH', body:JSON.stringify({foto_url:dataUrl})});
+        child.foto_url = dataUrl;
+        localStorage.setItem('tkOrtuChild', JSON.stringify(child));
+        toast('Foto profil anak diperbarui');
+      }catch(e){ toast('Gagal simpan foto: '+e.message); }
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
 function confirmLogout(){
   if(confirm('Yakin ingin keluar / ganti akun?')) logout();
 }
@@ -362,6 +393,7 @@ async function enterApp(){
   applyBranding();
   document.getElementById('hdrChildName').textContent = child.nama + ' · ' + (child.kelas?.nama||'-');
   document.getElementById('profChildName').textContent = child.nama;
+  document.getElementById('profChildAvatar').innerHTML = child.foto_url ? `<img src="${child.foto_url}" style="width:100%;height:100%;object-fit:cover;">` : '🧒';
   document.getElementById('profChildKelas').textContent = child.kelas?.nama||'-';
   document.getElementById('profOrtuName').textContent = child.nama_ortu||'-';
   document.getElementById('profOrtuHp').textContent = child.hp_ortu||'-';
