@@ -260,8 +260,9 @@ main{flex:1;padding:16px 16px 100px;position:relative;z-index:1;}
           <input type="file" id="childPhotoInput" accept="image/*" class="hidden" onchange="handleChildPhotoUpload(event)">
           <div><div style="font-weight:700;" id="profChildName">—</div><div class="text-muted" id="profChildKelas">—</div></div>
         </div>
-        <div class="form-group"><label class="form-label">Nama Orang Tua</label><div id="profOrtuName" class="text-muted">—</div></div>
-        <div class="form-group"><label class="form-label">No. HP</label><div id="profOrtuHp" class="text-muted">—</div></div>
+        <div class="form-group"><label class="form-label">Nama Orang Tua</label><input type="text" class="form-input" id="profOrtuName" placeholder="Isi nama Anda"></div>
+        <div class="form-group"><label class="form-label">No. HP</label><input type="text" class="form-input" id="profOrtuHp" placeholder="Contoh: 0812-xxxx-xxxx"></div>
+        <button class="btn btn-primary btn-block" onclick="saveOrtuInfo()">Simpan Data Orang Tua</button>
       </div>
       <button class="btn btn-outline btn-block" onclick="logout()">Ganti Akun / Keluar</button>
       <div class="watermark">Developed by D.D Candra © 2026</div>
@@ -348,6 +349,16 @@ async function loginWithToken(){
     document.getElementById('connectPromptBox').classList.remove('hidden');
   }
 }
+async function saveOrtuInfo(){
+  const nama = document.getElementById('profOrtuName').value.trim();
+  const hp = document.getElementById('profOrtuHp').value.trim();
+  try{
+    await sb('siswa?id=eq.'+child.id, {method:'PATCH', body:JSON.stringify({nama_ortu: nama||null, hp_ortu: hp||null})});
+    child.nama_ortu = nama; child.hp_ortu = hp;
+    localStorage.setItem('tkOrtuChild', JSON.stringify(child));
+    toast('Data orang tua disimpan');
+  }catch(e){ toast('Gagal: '+e.message); }
+}
 function handleChildPhotoUpload(ev){
   const file = ev.target.files[0]; if(!file) return;
   const reader = new FileReader();
@@ -395,8 +406,8 @@ async function enterApp(){
   document.getElementById('profChildName').textContent = child.nama;
   document.getElementById('profChildAvatar').innerHTML = child.foto_url ? `<img src="${child.foto_url}" style="width:100%;height:100%;object-fit:cover;">` : '🧒';
   document.getElementById('profChildKelas').textContent = child.kelas?.nama||'-';
-  document.getElementById('profOrtuName').textContent = child.nama_ortu||'-';
-  document.getElementById('profOrtuHp').textContent = child.hp_ortu||'-';
+  document.getElementById('profOrtuName').value = child.nama_ortu||'';
+  document.getElementById('profOrtuHp').value = child.hp_ortu||'';
   document.getElementById('childInfoBox').innerHTML = `Kelas: <strong>${child.kelas?.nama||'-'}</strong>${child.nisn?'<br>NISN: '+child.nisn:''}`;
   document.getElementById('histMonth').value = todayKey().slice(0,7);
   await loadToday();
