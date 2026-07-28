@@ -18,7 +18,7 @@
   --bg:#FFF9F2; --bg2:#FFF3E6; --surface:#FFFFFF; --surface2:#FFF1E0;
   --border:rgba(43,33,64,0.08); --border2:rgba(43,33,64,0.16);
   --text:#2B2140; --text2:#6E6480; --muted:#A79FB3;
-  --coral:#FF7B54; --coral-dk:#E8623C; --mint:#29B6A8; --sky:#5B9BD5; --purple:#9B87F5; --yellow:#FFC857; --red:#F0554A; --orange:#FF9F43; --slate:#6C7A9C;
+  --coral:#FF7B54; --coral-rgb:255,123,84; --coral-dk:#E8623C; --mint:#29B6A8; --sky:#5B9BD5; --purple:#9B87F5; --yellow:#FFC857; --red:#F0554A; --orange:#FF9F43; --slate:#6C7A9C;
   --ok-bg:rgba(41,182,168,0.12); --ok-brd:rgba(41,182,168,0.30);
   --warn-bg:rgba(255,200,87,0.18); --warn-brd:rgba(255,200,87,0.45);
   --bad-bg:rgba(240,85,74,0.10); --bad-brd:rgba(240,85,74,0.28);
@@ -29,7 +29,7 @@
 html{height:100%}
 body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100dvh;display:flex;flex-direction:column;max-width:600px;margin:0 auto;position:relative;overflow-x:hidden;}
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(circle at 8% 4%, rgba(255,123,84,0.10), transparent 40%),
+  background:radial-gradient(circle at 8% 4%, rgba(var(--coral-rgb),0.10), transparent 40%),
              radial-gradient(circle at 92% 14%, rgba(91,155,213,0.10), transparent 38%),
              radial-gradient(circle at 50% 100%, rgba(155,135,245,0.08), transparent 45%);}
 button{font-family:inherit;border:none;background:none;cursor:pointer;color:inherit}
@@ -39,7 +39,7 @@ input,select{font-family:inherit;color:inherit}
 
 .hdr{position:sticky;top:0;z-index:90;background:rgba(255,249,242,0.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
 .hdr-brand{display:flex;align-items:center;gap:10px;}
-.hdr-logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,var(--coral),var(--yellow));display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 14px rgba(255,123,84,0.35);flex-shrink:0;}
+.hdr-logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,var(--coral),var(--yellow));display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 14px rgba(var(--coral-rgb),0.35);flex-shrink:0;}
 .hdr-title{font-family:var(--display);font-weight:700;font-size:18px;line-height:1.1;}
 .hdr-sub{font-size:11px;color:var(--text2);margin-top:2px;font-weight:600;}
 
@@ -53,7 +53,7 @@ main{flex:1;padding:16px 16px 100px;position:relative;z-index:1;}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 20px;border-radius:var(--r-sm);font-weight:700;font-size:14.5px;letter-spacing:0.1px;transition:transform .15s ease, filter .15s ease;}
 .btn:active{transform:scale(0.97);filter:brightness(0.97);}
-.btn-primary{background:linear-gradient(135deg,var(--coral),var(--coral-dk));color:#fff;box-shadow:0 6px 16px rgba(255,123,84,0.38);}
+.btn-primary{background:linear-gradient(135deg,var(--coral),var(--coral-dk));color:#fff;box-shadow:0 6px 16px rgba(var(--coral-rgb),0.38);}
 .btn-outline{background:var(--surface2);color:var(--text);border:1.5px solid var(--border2);}
 .btn-block{width:100%;}
 .btn-sm{padding:8px 14px;font-size:12.5px;border-radius:10px;}
@@ -104,12 +104,12 @@ main{flex:1;padding:16px 16px 100px;position:relative;z-index:1;}
 .chat-input-row{display:flex;gap:8px;align-items:center;padding-top:10px;border-top:1px solid var(--border);}
 .chat-input-row input[type=text]{flex:1;border-radius:100px;padding:11px 16px;}
 .icon-btn{width:42px;height:42px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1.5px solid var(--border2);}
-.send-btn{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--coral),var(--coral-dk));color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(255,123,84,0.35);}
+.send-btn{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--coral),var(--coral-dk));color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(var(--coral-rgb),0.35);}
 
 .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:rgba(255,249,242,0.95);backdrop-filter:blur(16px);border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:flex-end;padding:10px 4px calc(8px + env(safe-area-inset-bottom));z-index:90;}
 
 .login-wrap{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;position:relative;z-index:1;}
-.login-logo{width:84px;height:84px;border-radius:26px;background:linear-gradient(135deg,var(--coral),var(--yellow));display:flex;align-items:center;justify-content:center;font-size:42px;box-shadow:0 10px 26px rgba(255,123,84,0.4);margin-bottom:18px;}
+.login-logo{width:84px;height:84px;border-radius:26px;background:linear-gradient(135deg,var(--coral),var(--yellow));display:flex;align-items:center;justify-content:center;font-size:42px;box-shadow:0 10px 26px rgba(var(--coral-rgb),0.4);margin-bottom:18px;}
 .login-title{font-family:var(--display);font-weight:800;font-size:26px;text-align:center;}
 .login-sub{font-size:13.5px;color:var(--text2);text-align:center;margin-top:6px;margin-bottom:28px;}
 .login-card{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;box-shadow:0 8px 28px rgba(43,33,64,0.06);}
@@ -449,6 +449,11 @@ async function loadBrandingFromDb(){
     localStorage.setItem('tkBranding', JSON.stringify(branding));
   }catch(e){ /* offline / tabel belum ada: pakai cache lokal */ }
 }
+function hexToRgbString(hex){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+  return r+','+g+','+b;
+}
 function applyThemeColor(){
   const main = branding.theme_primary || '#FF7B54';
   const dk = branding.theme_primary_dk || '#E8623C';
@@ -456,6 +461,7 @@ function applyThemeColor(){
   document.documentElement.style.setProperty('--coral', main);
   document.documentElement.style.setProperty('--coral-dk', dk);
   document.documentElement.style.setProperty('--yellow', yellow);
+  document.documentElement.style.setProperty('--coral-rgb', hexToRgbString(main));
 }
 function applyBranding(){
   const name = branding.app_name || 'AbsensiTK';
