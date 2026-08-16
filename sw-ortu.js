@@ -38,3 +38,33 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(event.request))
   );
 });
+
+// ===== WEB PUSH NOTIFICATION =====
+// Diterima walau aplikasi tertutup / HP terkunci, selama browser masih
+// aktif di latar belakang sistem (bukan force-close total oleh pengguna).
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch(e) {}
+  const title = data.title || 'AbsensiTK Ortu';
+  const options = {
+    body: data.body || '',
+    icon: 'icon-ortu-192.png',
+    badge: 'icon-ortu-192.png',
+    vibrate: [120, 60, 120],
+    data: { url: data.url || './index.html' }
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || './index.html';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(url);
+    })
+  );
+});
