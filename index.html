@@ -100,6 +100,10 @@ main{flex:1;padding:16px 16px 100px;position:relative;z-index:1;}
 .bubble-admin{align-self:center;background:var(--surface2);border:1px dashed var(--border2);font-size:12.5px;color:var(--text2);text-align:center;max-width:90%;}
 .bubble-sender{font-size:11px;font-weight:700;opacity:0.75;margin-bottom:3px;}
 .bubble-time{font-size:10px;opacity:0.6;margin-top:4px;text-align:right;}
+.bubble-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:4px;}
+.bubble-actions button{font-size:12px;opacity:0.75;padding:2px 5px;border-radius:6px;background:rgba(255,255,255,0.15);}
+.bubble-in .bubble-actions button{background:var(--surface2);}
+.bubble-actions button:active{opacity:1;}
 .bubble img{max-width:100%;border-radius:10px;margin-top:6px;display:block;}
 .chat-input-row{display:flex;gap:8px;align-items:center;padding-top:10px;border-top:1px solid var(--border);}
 .chat-input-row input[type=text]{flex:1;border-radius:100px;padding:11px 16px;}
@@ -640,13 +644,33 @@ function renderChat(rows){
     const cls = isMe?'bubble-out':'bubble-in';
     const img = m.foto_url ? `<img src="${m.foto_url}">` : '';
     const time = new Date(m.created_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+    const editedTag = m.edited_at ? ' <span style="opacity:0.7;font-style:italic;">(diedit)</span>' : '';
+    const actions = isMe ? `<div class="bubble-actions"><button onclick="editChatMessage('${m.id}')">✏️</button><button onclick="deleteChatMessage('${m.id}')">🗑️</button></div>` : '';
     return `<div class="bubble ${cls}">
       <div class="bubble-sender">${m.pengirim_nama}${m.pengirim_tipe==='guru'?' · Guru':m.pengirim_tipe==='admin'?' · Admin':''}</div>
-      ${m.isi_teks?`<div>${escapeHtml(m.isi_teks)}</div>`:''}${img}
+      ${m.isi_teks?`<div>${escapeHtml(m.isi_teks)}${editedTag}</div>`:''}${img}
       <div class="bubble-time">${time}</div>
+      ${actions}
     </div>`;
   }).join('');
   scrollChatBottom();
+}
+async function editChatMessage(id){
+  const current = prompt('Ubah pesan:');
+  if(current===null) return;
+  const trimmed = current.trim();
+  if(!trimmed){ toast('Pesan tidak boleh kosong'); return; }
+  try{
+    await sb('pesan?id=eq.'+id, {method:'PATCH', body:JSON.stringify({isi_teks:trimmed, edited_at:new Date().toISOString()})});
+    loadChatMessages();
+  }catch(e){ toast('Gagal edit: '+e.message); }
+}
+async function deleteChatMessage(id){
+  if(!confirm('Hapus pesan ini?')) return;
+  try{
+    await sb('pesan?id=eq.'+id, {method:'DELETE'});
+    loadChatMessages();
+  }catch(e){ toast('Gagal hapus: '+e.message); }
 }
 function scrollChatBottom(){ const b=document.getElementById('chatScroll'); if(b) b.scrollTop=b.scrollHeight; }
 function escapeHtml(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -655,11 +679,11 @@ function subscribeChat(){
   if(!sbClient) return;
   if(chatChannel) sbClient.removeChannel(chatChannel);
   chatChannel = sbClient.channel('pesan-ortu-'+child.id)
-    .on('postgres_changes', {event:'INSERT', schema:'public', table:'pesan'}, payload=>{
-      const row = payload.new;
+    .on('postgres_changes', {event:'*', schema:'public', table:'pesan'}, payload=>{
+      const row = payload.new || payload.old;
       if(row.kelas_id===null || String(row.kelas_id)===String(child.kelas_id)){
         loadChatMessages();
-        if(row.pengirim_tipe!=='ortu'){
+        if(payload.eventType==='INSERT' && row.pengirim_tipe!=='ortu'){
           playNotifSound();
           if(!document.getElementById('screenChat')?.classList.contains('active')) setNavDot('Chat', true);
         }
