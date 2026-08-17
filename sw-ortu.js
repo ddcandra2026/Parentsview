@@ -95,15 +95,18 @@ main{flex:1;padding:16px 16px 100px;position:relative;z-index:1;}
 .chat-wrap{display:flex;flex-direction:column;height:calc(100dvh - 210px);min-height:340px;}
 .chat-scroll{flex:1;overflow-y:auto;padding:6px 2px 12px;display:flex;flex-direction:column;gap:10px;}
 .bubble{max-width:78%;padding:10px 13px;border-radius:16px;font-size:14px;line-height:1.4;}
+.bubble-row{display:flex;align-items:flex-end;gap:4px;max-width:100%;align-self:flex-start;}
+.bubble-row.own{align-self:flex-end;justify-content:flex-end;}
+.bubble-menu-btn{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text2);font-weight:900;font-size:15px;flex-shrink:0;opacity:0.55;line-height:1;}
+.bubble-menu-btn:active{opacity:1;background:var(--surface2);}
+.bubble-dropdown{position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.18);overflow:hidden;z-index:300;min-width:130px;}
+.bubble-dropdown button{display:block;width:100%;text-align:left;padding:11px 15px;font-size:13px;font-weight:700;color:var(--text);}
+.bubble-dropdown button:active{background:var(--surface2);}
 .bubble-in{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:5px;}
 .bubble-out{align-self:flex-end;background:linear-gradient(135deg,var(--coral),var(--coral-dk));color:#fff;border-bottom-right-radius:5px;}
 .bubble-admin{align-self:center;background:var(--surface2);border:1px dashed var(--border2);font-size:12.5px;color:var(--text2);text-align:center;max-width:90%;}
 .bubble-sender{font-size:11px;font-weight:700;opacity:0.75;margin-bottom:3px;}
 .bubble-time{font-size:10px;opacity:0.6;margin-top:4px;text-align:right;}
-.bubble-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:4px;}
-.bubble-actions button{font-size:12px;opacity:0.75;padding:2px 5px;border-radius:6px;background:rgba(255,255,255,0.15);}
-.bubble-in .bubble-actions button{background:var(--surface2);}
-.bubble-actions button:active{opacity:1;}
 .bubble img{max-width:100%;border-radius:10px;margin-top:6px;display:block;}
 .chat-input-row{display:flex;gap:8px;align-items:center;padding-top:10px;border-top:1px solid var(--border);}
 .chat-input-row input[type=text]{flex:1;border-radius:100px;padding:11px 16px;}
@@ -721,15 +724,48 @@ function renderChat(rows){
     const img = m.foto_url ? `<img src="${m.foto_url}">` : '';
     const time = new Date(m.created_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
     const editedTag = m.edited_at ? ' <span style="opacity:0.7;font-style:italic;">(diedit)</span>' : '';
-    const actions = isMe ? `<div class="bubble-actions"><button onclick="editChatMessage('${m.id}')">✏️</button><button onclick="deleteChatMessage('${m.id}')">🗑️</button></div>` : '';
-    return `<div class="bubble ${cls}">
+    const bubbleHtml = `<div class="bubble ${cls}">
       <div class="bubble-sender">${m.pengirim_nama}${m.pengirim_tipe==='guru'?' · Guru':m.pengirim_tipe==='admin'?' · Admin':''}</div>
       ${m.isi_teks?`<div>${escapeHtml(m.isi_teks)}${editedTag}</div>`:''}${img}
       <div class="bubble-time">${time}</div>
-      ${actions}
     </div>`;
+    if(isMe){
+      return `<div class="bubble-row own">
+        <button class="bubble-menu-btn" onclick="toggleBubbleMenu(event,'${m.id}')">⋮</button>
+        ${bubbleHtml}
+      </div>`;
+    }
+    return bubbleHtml;
   }).join('');
   scrollChatBottom();
+}
+let bubbleMenuTargetId = null;
+function toggleBubbleMenu(ev, id){
+  ev.stopPropagation();
+  const existing = document.getElementById('bubbleDropdown');
+  const sameTarget = existing && bubbleMenuTargetId===id;
+  if(existing) existing.remove();
+  if(sameTarget){ bubbleMenuTargetId=null; return; }
+  bubbleMenuTargetId = id;
+  const rect = ev.currentTarget.getBoundingClientRect();
+  const menu = document.createElement('div');
+  menu.className = 'bubble-dropdown';
+  menu.id = 'bubbleDropdown';
+  menu.style.top = (rect.bottom+4)+'px';
+  menu.style.left = Math.max(8, Math.min(window.innerWidth-140, rect.left-90))+'px';
+  menu.innerHTML = '<button onclick="handleBubbleEdit()">✏️ Edit</button><button onclick="handleBubbleDelete()">🗑️ Hapus</button>';
+  document.body.appendChild(menu);
+}
+document.addEventListener('click', ()=>{ document.getElementById('bubbleDropdown')?.remove(); });
+function handleBubbleEdit(){
+  const id = bubbleMenuTargetId;
+  document.getElementById('bubbleDropdown')?.remove();
+  editChatMessage(id);
+}
+function handleBubbleDelete(){
+  const id = bubbleMenuTargetId;
+  document.getElementById('bubbleDropdown')?.remove();
+  deleteChatMessage(id);
 }
 async function editChatMessage(id){
   const current = prompt('Ubah pesan:');
