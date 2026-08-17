@@ -357,12 +357,13 @@ async function checkPushSubscribed(){
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
     if(!sub) return false;
-    // Self-healing: pastikan langganan ini BENAR-BENAR masih ada di database.
-    // Kalau baris-nya sempat terhapus (mis. dianggap kadaluarsa), simpan ulang otomatis.
+    // Self-healing: pastikan langganan endpoint HP ini di database memang
+    // atas nama ANAK YANG SEDANG LOGIN saat ini (bukan cuma cek endpoint-nya
+    // ada, karena 1 HP bisa dipakai gantian oleh akun anak berbeda-beda).
     try{
       const j = sub.toJSON();
-      const rows = await sb('push_subscriptions?endpoint=eq.'+encodeURIComponent(j.endpoint)+'&select=id');
-      if(!rows.length) await saveOrtuPushSubscription(sub);
+      const rows = await sb('push_subscriptions?endpoint=eq.'+encodeURIComponent(j.endpoint)+'&owner_type=eq.ortu&owner_id=eq.'+child.id+'&select=id');
+      if(!rows.length) await saveOrtuPushSubscription(sub); // klaim ulang endpoint ini untuk anak saat ini
     }catch(e){ /* offline / gagal cek, coba lagi nanti */ }
     return true;
   }catch(e){ return false; }
