@@ -26,6 +26,11 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Cache API cuma mendukung request GET (ambil data). Untuk POST/PATCH/DELETE
+  // (kirim chat, simpan langganan push, dll) biarkan browser proses seperti
+  // biasa tanpa campur tangan Service Worker.
+  if (event.request.method !== 'GET') return;
+
   // Network-first: selalu coba internet dulu (supaya data selalu terbaru),
   // baru fallback ke cache kalau offline.
   event.respondWith(
